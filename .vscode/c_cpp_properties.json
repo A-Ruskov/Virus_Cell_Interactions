@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/Users/alxndr/sfw/repast_hpc-2.3.1/include/repast_hpc",
+                "/Users/alxndr/sfw/boost-1_78_0/include/boost",
+                "/Users/alxndr/Documents/Virus_Cell_Interactions/repast_hpc/repast_hpc"
+            ],
+            "defines": [],
+            "macFrameworkPath": [
+                "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks"
+            ],
+            "compilerPath": "/usr/bin/clang++",
+            "cStandard": "c17",
+            "cppStandard": "c++98",
+            "intelliSenseMode": "macos-clang-arm64",
+            "browse": {
+                "path": [
+                    "/Users/alxndr/sfw/repast_hpc-2.3.1/include/repast_hpc",
+                    "/Users/alxndr/sfw/boost-1_78_0/include/boost"
+                ]
+            }
+        }
+    ],
+    "version": 4
+}
