@@ -69,6 +69,11 @@ public:
     double displayVirProteinsDelay;
     double extracellularReleaseProb;    // Probability of releasing a new virus particle in the extracellular space, when the cell starts producing the progeny virus
     double cellToCellTransmissionProb;     // Probability of directly infecting a neighbouring cell as a form of new virus particle release
+    double virionReleaseRate;      // The virus count rate which a virus producing cell releases each hour.
+    int countOfVirionsToRelease;     // The count of viruses that a virus producing cell will release at the current step.
+    // The remainder of virus particles from the release rate (any decimal - if the release rate is 1.3, we'll keep 0.3 as remainder, so when it sums over time
+    // it will result in additional virus particles to be released)
+    double virionReleaseRemainder;
 
     // Specific to Virions
     double penetrationProbability;
@@ -96,6 +101,7 @@ public:
     VirusCellInteractionAgentPackage(int _id, int _rank, int _type, int _currentRank, int _lifespan, int _age, int _privateState, int _publicState, int _infectedLifespan, 
                 int _timeInfected, int _divisionRate, int _timeSinceLastDivision, double _releaseDelay, double _displayVirProteinsDelay, 
                 double _extracellularReleaseProb, double _cellToCellTransmissionProb,
+                double _virionReleaseRate, int _countOfVirionsToRelease, double _virionReleaseRemainder,
                 double _penetrationProbability, double _clearanceProbability, double _clearanceProbScaler,
                 double _infectedCellRecognitionProb, double _infectedCellEliminationProb,
                 double _specialisedImmuneCellRecruitProb,
@@ -122,6 +128,9 @@ public:
         ar & displayVirProteinsDelay;
         ar & extracellularReleaseProb;
         ar & cellToCellTransmissionProb;
+        ar & virionReleaseRate;
+        ar & countOfVirionsToRelease;
+        ar & virionReleaseRemainder;
 
         // Specific to virion agents
         ar & penetrationProbability;

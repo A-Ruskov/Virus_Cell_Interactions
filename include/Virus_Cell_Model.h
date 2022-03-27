@@ -59,6 +59,8 @@ class VirusCellModel{
     double epithCellDispViralPeptidesDelayStdev;
     double extracellularVirusReleaseProb;
     double cellToCellTransmissionProb;
+    double epithCellVirionReleaseRateAvg;
+    double epithCellVirionReleaseRateStdev;
 
     // Virion (Virus Particle) agents parameters.
     double virionAvgLifespan;

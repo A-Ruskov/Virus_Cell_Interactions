@@ -19,6 +19,8 @@ epithelial.cell.display.viral.peptides.delay.average = 2.0
 epithelial.cell.display.viral.peptides.delay.standard.dev = 1.0
 release.virus.in.extracellular.space.probability = 1.0
 cell.to.cell.transmission.probability = 0.0
+epithelial.cell.infected.virion.release.rate.average = 1.5
+epithelial.cell.infected.virion.release.rate.standard.dev = 1.0
 
 # Virion Parameters
 virion.average.lifespan = 6.4

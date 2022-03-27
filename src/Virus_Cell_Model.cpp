@@ -42,6 +42,8 @@ context(comm)
     // It could release it in the extracellular space (the grid), or could directly infect a neighbouring cell (known as cell-to-cell transmission release)
     extracellularVirusReleaseProb = repast::strToDouble(props->getProperty("release.virus.in.extracellular.space.probability"));
     cellToCellTransmissionProb = repast::strToDouble(props->getProperty("cell.to.cell.transmission.probability"));
+    epithCellVirionReleaseRateAvg = repast::strToDouble(props->getProperty("epithelial.cell.infected.virion.release.rate.average"));
+    epithCellVirionReleaseRateStdev = repast::strToDouble(props->getProperty("epithelial.cell.infected.virion.release.rate.standard.dev"));
 
     // Virion (Virus Particle) agents parameters read.
     virionAvgLifespan = repast::strToDouble(props->getProperty("virion.average.lifespan"));
@@ -258,12 +260,21 @@ void VirusCellModel::initialiseEpithelialCellAgent( int epithelialCellIndex, int
         releaseDelay = releaseDelayGen.next();
     }
 
+
+    repast::NormalGenerator virionReleaseRateGen = repast::Random::instance()->createNormalGenerator(epithCellVirionReleaseRateAvg, epithCellVirionReleaseRateStdev);
+    double releaseRate = virionReleaseRateGen.next();
+    while(releaseRate < 0.1 )
+    {
+        releaseRate = virionReleaseRateGen.next();
+    }
+
+
     // Create the new Epithelial cell agent
     if( isExistingAgentObject == false )
     {
         repast::AgentId newAgentId(epithelialCellIndex, rank, 0);
         newAgentId.currentRank(rank);
-        EpithelialCellAgent* newEpithelialCell = new EpithelialCellAgent(newAgentId, cellLifespan, cellAge, infectedCellLifespan, divisionRate, timeSinceLastDivision, releaseDelay, displayVirProtDelay, extracellularVirusReleaseProb, cellToCellTransmissionProb);
+        EpithelialCellAgent* newEpithelialCell = new EpithelialCellAgent(newAgentId, cellLifespan, cellAge, infectedCellLifespan, divisionRate, timeSinceLastDivision, releaseDelay, displayVirProtDelay, extracellularVirusReleaseProb, cellToCellTransmissionProb, releaseRate);
         context.addAgent(newEpithelialCell);
 
         // Set the new cell location
@@ -274,10 +285,15 @@ void VirusCellModel::initialiseEpithelialCellAgent( int epithelialCellIndex, int
     // existing agent object with the newly generated parameters. Then the existing object will be representing a new cell.
     else if( theExistingCellObject != nullptr )
     {
+        // Set the current count of virions to release to 0 and the remainder to 0, as this is a new healthy cell, which has no virions to release
+        int countOfVirionsToRelease = 0;
+        double virionReleaseRemainder = 0.0;
+
         theExistingCellObject->set(theExistingCellObject->getId().currentRank(), cellLifespan, cellAge, theExistingCellObject->healthy, theExistingCellObject->seeminglyHealthy, 
         infectedCellLifespan, infectedTime, divisionRate, timeSinceLastDivision, releaseDelay, displayVirProtDelay, 
         theExistingCellObject->noModification, repast::AgentId(-1, -1, -1, -1), 
-        extracellularVirusReleaseProb, cellToCellTransmissionProb);
+        extracellularVirusReleaseProb, cellToCellTransmissionProb,
+        releaseRate, countOfVirionsToRelease, virionReleaseRemainder);
     }
 
 }
@@ -638,7 +654,7 @@ void VirusCellModel::checkForCellVirionRelease(VirusCellInteractionAgents* theEp
     if( epithelialCell->isCellToReleaseVirion() == true )
     {
         repast::IntUniformGenerator releaseCountGen = repast::Random::instance()->createUniIntGenerator(1, 1);
-        int numVirionsToRelease = 1;
+        int numVirionsToRelease = epithelialCell->getVirionCountToRelease();
 
         for( int i = 0; i < numVirionsToRelease; ++i)
         {
@@ -831,7 +847,8 @@ void VirusCellInteractionAgentsPackageProvider::providePackage(VirusCellInteract
         VirusCellInteractionAgentPackage cellPackage(id.id(), id.startingRank(), id.agentType() ,id.currentRank(), theEpithelialCell->getLifespan(), 
             theEpithelialCell->getAge(), theEpithelialCell->getInternalState(), theEpithelialCell->getExternalState(), theEpithelialCell->getInfectedLifespan(),theEpithelialCell->getTimeInfected(), 
             theEpithelialCell->getDivisionRate(), theEpithelialCell->getTimeSinceLastDivision(), theEpithelialCell->getReleaseDelay(), theEpithelialCell->getDisplayVirProteinsDelay(), 
-            theEpithelialCell->getExtracellularReleaseProb(), theEpithelialCell->getCellToCellTransmissionProb(),
+            theEpithelialCell->getExtracellularReleaseProb(), theEpithelialCell->getCellToCellTransmissionProb(), 
+            theEpithelialCell->getVirionReleaseRate(), theEpithelialCell->getVirionCountToRelease(), theEpithelialCell->getVirionReleaseRemainder(),
             -1, -1, -1, -1, -1, -1,
             theEpithelialCell->getTypeOfModifToNeighbCell(), agentToModify.id(), agentToModify.startingRank(), agentToModify.agentType(), agentToModify.currentRank());
         
@@ -842,7 +859,7 @@ void VirusCellInteractionAgentsPackageProvider::providePackage(VirusCellInteract
         VirionAgent* theVirion = static_cast<VirionAgent*>(agent);
         VirusCellInteractionAgentPackage virionPackage(id.id(), id.startingRank(), id.agentType() ,id.currentRank(), theVirion->getLifespan(), 
             theVirion->getAge(), theVirion->getVirionState(), 
-            -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             theVirion->getPenetrationProb(), theVirion->getClearanceProb(), theVirion->getClearanceProbScaler(),
              -1, -1, -1,
              -1, -1, -1, -1, -1);
@@ -854,7 +871,7 @@ void VirusCellInteractionAgentsPackageProvider::providePackage(VirusCellInteract
         InnateImmuneCellAgent* theInnateImmuneCell = static_cast<InnateImmuneCellAgent*>(agent);
         VirusCellInteractionAgentPackage innImuneCellPackage(id.id(), id.startingRank(), id.agentType() ,id.currentRank(), theInnateImmuneCell->getLifespan(), 
             theInnateImmuneCell->getAge(), theInnateImmuneCell->getCellState(), 
-            -1 ,-1, -1, -1, -1, -1, -1, -1, -1, 
+            -1 ,-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1,
             theInnateImmuneCell->getInfCellRecognitionProb(), theInnateImmuneCell->getInfCellEliminationProb(), theInnateImmuneCell->getSpecImmuneCellRecruitProb(),
             -1, -1, -1, -1, -1);
@@ -866,7 +883,7 @@ void VirusCellInteractionAgentsPackageProvider::providePackage(VirusCellInteract
         SpecialisedImmuneCellAgent* theSpecialisedImmuneCell = static_cast<SpecialisedImmuneCellAgent*>(agent);
         VirusCellInteractionAgentPackage spcImmuneCellPackage(id.id(), id.startingRank(), id.agentType() ,id.currentRank(), theSpecialisedImmuneCell->getLifespan(), 
             theSpecialisedImmuneCell->getAge(), theSpecialisedImmuneCell->getCellState(),
-            -1, -1, -1, -1, -1, -1 ,-1, -1, -1, 
+            -1, -1, -1, -1, -1, -1 ,-1, -1, -1, -1, -1, -1,
             -1, -1, -1,
             theSpecialisedImmuneCell->getInfCellRecognitionProb(), theSpecialisedImmuneCell->getInfCellEliminationProb(),
             -1, 
@@ -918,7 +935,8 @@ VirusCellInteractionAgents * VirusCellInteractionAgentsPackageReceiver::createAg
         return new EpithelialCellAgent( theAgentId, package.lifespan, package.age, EpithelialCellAgent::InternalState(package.privateState), 
             EpithelialCellAgent::ExternalState(package.publicState), package.infectedLifespan, package.timeInfected, package.divisionRate, package.timeSinceLastDivision, package.releaseDelay, package.displayVirProteinsDelay,
             EpithelialCellAgent::NeighbouringCellModificationType(package.typeOfChangeToMakeToAgent), repast::AgentId(package.agentToEditID, package.agentToEditStartRank, package.agentToEditType, package.agentToEditCurrRank),
-            package.extracellularReleaseProb, package.cellToCellTransmissionProb );
+            package.extracellularReleaseProb, package.cellToCellTransmissionProb,
+            package.virionReleaseRate, package.countOfVirionsToRelease, package.virionReleaseRemainder );
     }  
     else if(package.type == 1)
     {
@@ -949,7 +967,8 @@ void VirusCellInteractionAgentsPackageReceiver::updateAgent(VirusCellInteraction
         theEpithelialCell->set(package.currentRank, package.lifespan, package.age, EpithelialCellAgent::InternalState(package.privateState), 
            EpithelialCellAgent::ExternalState(package.publicState), package.infectedLifespan, package.timeInfected, package.divisionRate, package.timeSinceLastDivision, package.releaseDelay, package.displayVirProteinsDelay,
            EpithelialCellAgent::NeighbouringCellModificationType(package.typeOfChangeToMakeToAgent), repast::AgentId(package.agentToEditID, package.agentToEditStartRank, package.agentToEditType, package.agentToEditCurrRank),
-           package.extracellularReleaseProb, package.cellToCellTransmissionProb);
+           package.extracellularReleaseProb, package.cellToCellTransmissionProb,
+           package.virionReleaseRate, package.countOfVirionsToRelease, package.virionReleaseRemainder );
     }
     else if( package.type == 1 )
     {

@@ -24,7 +24,10 @@ releaseDelay(3),
 displayVirProteinsDelay(2),
 toReleaseVirion(false),
 extracellularReleaseProb(0.8),
-cellToCellTransmissionProb(0.2)
+cellToCellTransmissionProb(0.2),
+virionReleaseRate(1.0),
+countOfVirionsToRelease(0),
+virionReleaseRemainder(0.0)
 { 
     agentLifespan = 30; 
     agentAge = 0;
@@ -36,7 +39,8 @@ cellToCellTransmissionProb(0.2)
 *   EpithelialCellAgent::EpithelialCellAgent - Constructor for the EpithelialCellAgent class.
 **********************/
 EpithelialCellAgent::EpithelialCellAgent(repast::AgentId theId, double theLifespan, int theAge, int theInfectedLifespan, int theDivisionRate, int theTimeSinceLastDivision,
-                                         double theReleaseDelay, double theDisplayVirProtDelay, double theExtracellularReleaseProb, double theCellToCellTransmissionProb):
+                                         double theReleaseDelay, double theDisplayVirProtDelay, double theExtracellularReleaseProb, double theCellToCellTransmissionProb,
+                                         double theVirionReleaseRate):
 VirusCellInteractionAgents(theId, theLifespan, theAge) ,
 internalState(healthy),
 externalState(seeminglyHealthy),
@@ -51,7 +55,10 @@ releaseDelay(theReleaseDelay),
 toReleaseVirion(false),
 displayVirProteinsDelay(theDisplayVirProtDelay),
 extracellularReleaseProb(theExtracellularReleaseProb),
-cellToCellTransmissionProb(theCellToCellTransmissionProb)
+cellToCellTransmissionProb(theCellToCellTransmissionProb),
+virionReleaseRate(theVirionReleaseRate),
+countOfVirionsToRelease(0),
+virionReleaseRemainder(0.0)
 {
 }
 
@@ -63,7 +70,8 @@ cellToCellTransmissionProb(theCellToCellTransmissionProb)
 EpithelialCellAgent::EpithelialCellAgent(repast::AgentId theId, double theLifespan, int theAge, InternalState theInternalState, 
                         ExternalState theExternalState, int theInfectedLifespan, int theInfectedTime, int theDivisionRate, int theTimeSinceLastDivision, double theReleaseDelay, double theDisplayVirProtDelay,
                         NeighbouringCellModificationType theModificationToNeighbCell, repast::AgentId theNeighbouringCellToModify,
-                        double theExtracellularReleaseProb, double theCellToCellTransmissionProb):
+                        double theExtracellularReleaseProb, double theCellToCellTransmissionProb,
+                        double theVirionReleaseRate, int theCountOfVirionsToRelease, double theVirionReleaseRemainder):
 VirusCellInteractionAgents(theId, theLifespan, theAge),
 internalState(theInternalState),
 externalState(theExternalState),
@@ -78,7 +86,10 @@ releaseDelay(theReleaseDelay),
 toReleaseVirion(false),
 displayVirProteinsDelay(theDisplayVirProtDelay),
 extracellularReleaseProb(theExtracellularReleaseProb),
-cellToCellTransmissionProb(theCellToCellTransmissionProb)
+cellToCellTransmissionProb(theCellToCellTransmissionProb),
+virionReleaseRate(theVirionReleaseRate),
+countOfVirionsToRelease(theCountOfVirionsToRelease),
+virionReleaseRemainder(theVirionReleaseRemainder)
 {
 
 }
@@ -101,7 +112,8 @@ EpithelialCellAgent::~EpithelialCellAgent()
 void EpithelialCellAgent::set(int currentRank, double newLifespan, double newAge, InternalState newInternalState, ExternalState newExtState, 
                               int newInfectedLifespan ,int newInfectedTime, int newDivisionRate, int newTimeSinceLastDivision, double newReleaseDelay, 
                               double newDisplayVirProteinsDelay, NeighbouringCellModificationType newModificationToNeighbCell, repast::AgentId newNeighbouringCellToModify, 
-                              double newExtracellularReleaseProb, double newCellToCellTransmissionProb)
+                              double newExtracellularReleaseProb, double newCellToCellTransmissionProb,
+                              double newVirionReleaseRate, int newCountOfVirionsToRelease, double newVirionReleaseRemainder)
 {
     agentId.currentRank(currentRank);
     agentLifespan = newLifespan;
@@ -118,6 +130,9 @@ void EpithelialCellAgent::set(int currentRank, double newLifespan, double newAge
     neighbouringCellToModify = newNeighbouringCellToModify;
     extracellularReleaseProb = newExtracellularReleaseProb;
     cellToCellTransmissionProb = newCellToCellTransmissionProb;
+    virionReleaseRate = newVirionReleaseRate;
+    countOfVirionsToRelease = newCountOfVirionsToRelease;
+    virionReleaseRemainder = newVirionReleaseRemainder;
 }
 
 
@@ -130,6 +145,7 @@ void EpithelialCellAgent::doStep(repast::SharedContext<VirusCellInteractionAgent
 {
     // Reset the identifiers for releasing virions and modifying neighbouring cells to the default values. These will be set to specific values if needed.
     toReleaseVirion = false;
+    countOfVirionsToRelease = 0;
     modificationToNeighbCell = noModification;
     neighbouringCellToModify = idForNoNeighbourModification;
 
@@ -253,6 +269,8 @@ void EpithelialCellAgent::actInfected(repast::SharedDiscreteSpace<VirusCellInter
         if( releaseProbabilitiesGen.next() > 1 - extracellularReleaseProb )
         {
             toReleaseVirion = true;
+            countOfVirionsToRelease = (int)(virionReleaseRate + virionReleaseRemainder);
+            virionReleaseRemainder = (virionReleaseRate + virionReleaseRemainder) - (double)countOfVirionsToRelease;
         }
 
         // Attempt a cell to cell infection of a neighbouring cell

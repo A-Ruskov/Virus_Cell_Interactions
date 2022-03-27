@@ -67,8 +67,9 @@ void VirusCellInteractionAgents::doStep(repast::SharedContext<VirusCellInteracti
 VirusCellInteractionAgentPackage::VirusCellInteractionAgentPackage(){ }
 
 VirusCellInteractionAgentPackage::VirusCellInteractionAgentPackage(int _id, int _rank, int _type, int _currentRank, int _lifespan, int _age, int _privateState, int _publicState, int _infectedLifespan, 
-                int _timeInfected, int _divisionRate, int _timeSinceLastDivision, double _releaseDelay,  double _displayVirProteinsDelay, 
+                int _timeInfected, int _divisionRate, int _timeSinceLastDivision, double _releaseDelay, double _displayVirProteinsDelay, 
                 double _extracellularReleaseProb, double _cellToCellTransmissionProb,
+                double _virionReleaseRate, int _countOfVirionsToRelease, double _virionReleaseRemainder,
                 double _penetrationProbability, double _clearanceProbability, double _clearanceProbScaler,
                 double _infectedCellRecognitionProb, double _infectedCellEliminationProb,
                 double _specialisedImmuneCellRecruitProb,
@@ -91,6 +92,9 @@ releaseDelay(_releaseDelay),
 displayVirProteinsDelay(_displayVirProteinsDelay),
 extracellularReleaseProb(_extracellularReleaseProb),
 cellToCellTransmissionProb(_cellToCellTransmissionProb),
+virionReleaseRate(_virionReleaseRate),
+countOfVirionsToRelease(_countOfVirionsToRelease),
+virionReleaseRemainder(_virionReleaseRemainder),
 
 // Specific to virion agents
 penetrationProbability(_penetrationProbability),
