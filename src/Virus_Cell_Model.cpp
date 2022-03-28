@@ -91,8 +91,8 @@ context(comm)
     repast::GridDimensions gridDimensions(origin, extent);
 
     std::vector<int> processDimensions;
-    processDimensions.push_back(5);
-    processDimensions.push_back(5);
+    processDimensions.push_back(4);
+    processDimensions.push_back(4);
 
     // The grid projection will contain agents of type VirusCellInteractionAgents, so that it can facilitate all agents types
     // Then we can use the agent type identifier in each agent ID, to cast them to the correct type of agent.
