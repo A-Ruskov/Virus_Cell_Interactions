@@ -5,7 +5,7 @@
 #
 #*******************************
 
-MPICXX=/Users/alxndr/sfw/MPICH/bin/mpicxx -std=c++11 
+MPICXX=/root/sfw/MPICH/bin/mpicxx -std=c++11 
 
 BOOST_INCLUDE=-I/root/sfw/boost-1_61_0/include/
 BOOST_LIB_DIR=-L/root/sfw/boost-1_61_0/lib/
