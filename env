@@ -7,8 +7,8 @@
 
 MPICXX=/Users/alxndr/sfw/MPICH/bin/mpicxx -std=c++11 
 
-BOOST_INCLUDE=-I/Users/alxndr/sfw/boost-1_78_0/include/
-BOOST_LIB_DIR=-L/Users/alxndr/sfw/boost-1_78_0/lib/
+BOOST_INCLUDE=-I/Users/alxndr/sfw/boost-1_61_0/include/
+BOOST_LIB_DIR=-L/Users/alxndr/sfw/boost-1_61_0/lib/
 BOOST_LIBS=-lboost_mpi-mt-a64 -lboost_serialization-mt-a64 -lboost_system-mt-a64 -lboost_filesystem-mt-a64
 
 REPAST_HPC_INCLUDE=-I/Users/alxndr/sfw/repast_hpc-2.3.1/include/

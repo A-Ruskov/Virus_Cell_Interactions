@@ -1,6 +1,6 @@
 #Properties file
 stop.at = 241
-grid.dimension = 800
+grid.dimension = 500
 count.of.epithelial.cells = 2500
 count.of.virions = 50
 count.of.innate.immune.cells = 200
