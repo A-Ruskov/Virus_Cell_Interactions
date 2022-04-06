@@ -38,9 +38,11 @@ clean: clean_compiled_files clean_output_files remove_subdirectories
 Virus_Cell_Sim: clean_compiled_files
 	$(MPICXX) $(REPAST_HPC_DEFINES) $(BOOST_INCLUDE) $(REPAST_HPC_INCLUDE) -I./include -c ./src/Virus_Cell_Main.cpp -o ./objects/Virus_Cell_Main.o
 	$(MPICXX) $(REPAST_HPC_DEFINES) $(BOOST_INCLUDE) $(REPAST_HPC_INCLUDE) -I./include -c ./src/Virus_Cell_Model.cpp -o ./objects/Virus_Cell_Model.o
+	$(MPICXX) $(REPAST_HPC_DEFINES) $(BOOST_INCLUDE) $(REPAST_HPC_INCLUDE) -I./include -c ./src/Data_Collection.cpp -o ./objects/Data_Collection.o
 	$(MPICXX) $(REPAST_HPC_DEFINES) $(BOOST_INCLUDE) $(REPAST_HPC_INCLUDE) -I./include -c ./src/Virus_Cell_Agent.cpp -o ./objects/Virus_Cell_Agent.o
+	$(MPICXX) $(REPAST_HPC_DEFINES) $(BOOST_INCLUDE) $(REPAST_HPC_INCLUDE) -I./include -c ./src/Agent_Synchronisation_Package_Pattern.cpp -o ./objects/Agent_Synchronisation_Package_Pattern.o
 	$(MPICXX) $(REPAST_HPC_DEFINES) $(BOOST_INCLUDE) $(REPAST_HPC_INCLUDE) -I./include -c ./src/Epithelial_Cell_Agent.cpp -o ./objects/Epithelial_Cell_Agent.o
 	$(MPICXX) $(REPAST_HPC_DEFINES) $(BOOST_INCLUDE) $(REPAST_HPC_INCLUDE) -I./include -c ./src/Virion_Agent.cpp -o ./objects/Virion_Agent.o
 	$(MPICXX) $(REPAST_HPC_DEFINES) $(BOOST_INCLUDE) $(REPAST_HPC_INCLUDE) -I./include -c ./src/Innate_Immune_Cell.cpp -o ./objects/Innate_Immune_Cell.o
 	$(MPICXX) $(REPAST_HPC_DEFINES) $(BOOST_INCLUDE) $(REPAST_HPC_INCLUDE) -I./include -c ./src/Specialised_Immune_Cell.cpp -o ./objects/Specialised_Immune_Cell.o
-	$(MPICXX) $(BOOST_LIB_DIR) $(REPAST_HPC_LIB_DIR) -o ./bin/Virus_Cell_Model.exe  ./objects/Virus_Cell_Main.o ./objects/Virus_Cell_Model.o ./objects/Virus_Cell_Agent.o ./objects/Epithelial_Cell_Agent.o ./objects/Virion_Agent.o  ./objects/Innate_Immune_Cell.o ./objects/Specialised_Immune_Cell.o -O3 $(REPAST_HPC_LIB) $(BOOST_LIBS)
+	$(MPICXX) $(BOOST_LIB_DIR) $(REPAST_HPC_LIB_DIR) -o ./bin/Virus_Cell_Model.exe  ./objects/Virus_Cell_Main.o ./objects/Virus_Cell_Model.o ./objects/Data_Collection.o ./objects/Virus_Cell_Agent.o ./objects/Agent_Synchronisation_Package_Pattern.o ./objects/Epithelial_Cell_Agent.o ./objects/Virion_Agent.o  ./objects/Innate_Immune_Cell.o ./objects/Specialised_Immune_Cell.o -O3 $(REPAST_HPC_LIB) $(BOOST_LIBS)

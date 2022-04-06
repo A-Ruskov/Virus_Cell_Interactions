@@ -1,28 +1,16 @@
 /*  Virion_Agent.cpp  */
+// Class for implementing the Innate Immune Cell agents in the model.
+
+/**********************
+*   INCLUDE FILES
+**********************/
 #include "Virion_Agent.h"
 #include "Virus_Cell_Agent.h"
 #include "Epithelial_Cell_Agent.h"
 
 #include "repast_hpc/initialize_random.h"
-
 #include "repast_hpc/Point.h"
 #include "repast_hpc/Moore2DGridQuery.h"
-
-
-/**********************
-*   VirionAgent::VirionAgent - Basic Constructor for the VirionAgent class.
-**********************/
-VirionAgent::VirionAgent(repast::AgentId theId) : 
-VirusCellInteractionAgents(theId),
-virionState(free_virion),
-penetrationProbability(0.4),
-clearanceProbability(0.2),
-clearanceProbScaler(1.2)
-{ 
-    agentLifespan = 15; 
-    agentAge = 0;
-}
-
 
 
 /**********************
@@ -30,7 +18,7 @@ clearanceProbScaler(1.2)
 **********************/
 VirionAgent::VirionAgent(repast::AgentId theId, double theLifespan, int theAge, double thePenetrationProb, double theClearanceProbability, double theClearanceProbScaler):
 VirusCellInteractionAgents(theId, theLifespan, theAge),
-virionState(free_virion),
+virionState(Free_Virion),
 penetrationProbability(thePenetrationProb),
 clearanceProbability(theClearanceProbability),
 clearanceProbScaler(theClearanceProbScaler)
@@ -58,13 +46,13 @@ clearanceProbScaler(theClearanceProbScaler)
 **********************/
 VirionAgent::~VirionAgent()
 { 
-
 }
 
 
 
 /**********************
-*   VirionAgent::set - Setter for the agent. Sets the current rank and updates the age and lifespan
+*   VirionAgent::set - Setter for the agent. Sets all state variables and parameters of the agents. 
+*   This setter is used only for updating agent copies at the buffer zone. It ensures that the non-local agents copies are always up-to-date with the original.
 **********************/
 void VirionAgent::set(int currentRank, double newLifespan, double newAge, VirionStates newVirState, double newPenetrationProb, double newClearanceProb, double newClearanceProbScaler)
 {
@@ -85,12 +73,15 @@ void VirionAgent::set(int currentRank, double newLifespan, double newAge, Virion
 **********************/
 void VirionAgent::doStep(repast::SharedContext<VirusCellInteractionAgents>* context, repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
 {
+    // Increment the agent's age and check if it has exceeded its lifespan. If that is the case, then set it to "Dead".
     ++agentAge;
-    if(agentAge > agentLifespan && virionState != dead)
+    if(agentAge > agentLifespan && virionState != Dead)
     {
-        virionState = dead;
+        virionState = Dead;
+        return;
     }
-    else
+    
+    if( virionState == Free_Virion )
     {
         std::vector<int> virionLocation;
         discreteGridSpace->getLocation(agentId, virionLocation);
@@ -102,9 +93,9 @@ void VirionAgent::doStep(repast::SharedContext<VirusCellInteractionAgents>* cont
         theQuery.query(locationPoint, 0, true, agentsAtThisCell);
 
         std::vector<VirusCellInteractionAgents*>::iterator agentsAtThisCellIter;
+
         EpithelialCellAgent* theEpithelialCellHere = nullptr;
         int immuneCellAgentsCount = 0;
-
 
         for( agentsAtThisCellIter = agentsAtThisCell.begin(); agentsAtThisCellIter != agentsAtThisCell.end(); ++agentsAtThisCellIter )
         {
@@ -113,43 +104,88 @@ void VirionAgent::doStep(repast::SharedContext<VirusCellInteractionAgents>* cont
             {
                theEpithelialCellHere = static_cast<EpithelialCellAgent*>(*agentsAtThisCellIter);
             }
-            // Count how many immune cell agents are in the same grid cell
+            // Count how many immune cell agents are in the same grid cell. This will then be used in the virionClearance function/submodel
             else if( (*agentsAtThisCellIter)->getId().agentType() == 2 || (*agentsAtThisCellIter)->getId().agentType() == 3 )
             {
                 immuneCellAgentsCount++;
             }
         }
 
+        // Execute the virion clearance submodel. /The virion might die due to unmodelled immune response mechanisms/
+        virionClearance( immuneCellAgentsCount );
 
-        // For each immune cell at the same grid position, the clearance probability should grow. The more modelled immune cells there are here,
-        // The more the chance of other unmodelled immune mechanisms to happen there as well.
-        repast::DoubleUniformGenerator clearanceGen = repast::Random::instance()->createUniDoubleGenerator(0.0, 1.0);
-        double clearance =  clearanceGen.next();
-        for( int i = 0; i < immuneCellAgentsCount; ++i )
+        // If the virus did not get cleared /it is not dead/, then attempt to infect a cell.
+        if( virionState != Dead )
         {
-            clearance = clearance * clearanceProbScaler;
+            attemptToInfectCell( theEpithelialCellHere, discreteGridSpace );
         }
+    }
+}
 
-        // If the virus get's cleared, mark it as dead.
-        if( clearance > 1 - clearanceProbability )
+
+
+/**********************
+*   VirionAgent::virionClearance - Handles the possible death of a virion caused by unmodelled immune mechanisms. 
+*   Based on a probability value the agent could get cleaned from the grid.
+*   Implementation of the VirionClearance submodel.
+**********************/
+void VirionAgent::virionClearance( int countOfImmuneAgentsAtVirionLocation )
+{
+    // For each immune cell at the same grid position, the clearance probability should grow. The more modelled immune cells there are here,
+    // The more the chance of other unmodelled immune mechanisms to happen there as well.
+    repast::DoubleUniformGenerator clearanceGen = repast::Random::instance()->createUniDoubleGenerator(0.0, 1.0);
+    double clearance =  clearanceGen.next();
+    for( int i = 0; i < countOfImmuneAgentsAtVirionLocation; ++i )
+    {
+        clearance = clearance * clearanceProbScaler;
+    }
+
+    // If the virus get's cleared, mark it as Dead.
+    if( clearance > 1 - clearanceProbability )
+    {
+        virionState = Dead;
+    }
+}
+
+
+
+/**********************
+*   VirionAgent::attemptToInfectCell - Gets the epithelial cell at the current grid position, and attempts to infect it. 
+*   Implementation of the AttemptToInfectCell submodel.
+**********************/
+void VirionAgent::attemptToInfectCell(EpithelialCellAgent* theEpithelialCell, repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
+{
+    if(theEpithelialCell != nullptr)
+    {
+        // If the cell seems to be helathy. (NOTE: It could be infected but is not expressing any proteins, so there is no sign of infection ).
+        if( theEpithelialCell->getExternalState() == EpithelialCellAgent::ExternalState::SeeminglyHealthy )
         {
-            virionState = dead;
-        }
+            repast::DoubleUniformGenerator penetrationChanceGen = repast::Random::instance()->createUniDoubleGenerator( 0.0 , 1.0 );
+            double toInfectTheCell = penetrationChanceGen.next();
 
-        // If the virus is not "dead" (did not get cleared), then walk around and try to infect cells.
-        if( virionState != dead )
-        {
-            attemptToInfectCell(theEpithelialCellHere);
-
-            if(virionState != dead)
+            // Check if the virus manages to penetrate the cell based on the probability parameter.
+            if( toInfectTheCell > 1-penetrationProbability )
             {
-                // Move the virus particle, if it could not infect the cell.
-                move(discreteGridSpace);
+                // Infect the epithelial cell.
+                theEpithelialCell->infect();
+
+                // After infecting the cell we'll turn the virion agent to Contained, since it is no longer a free virion particle. 
+                // Then the Contained virion particle will be removed from the simulation by the Virs_Cell_Model class, as it can no longer move and infect other cells.
+                // This is to also ensure that the data tracking the count of free virions is correct.
+                virionState = Contained;
             }
         }
     }
+    else
+    {
+        std::cout<<"An incorrect pointer to the epithelial cell agent was passed to VirionAgent::attemptToInfectCell()! The penetration attempt cannot be executed."<<std::endl;
+    }
 
-
+    // If the virus is not contained (It could not infect the cell), then move to a neighbouring grid cell.
+    if( virionState == Free_Virion)
+    {
+        move(discreteGridSpace);
+    }
 }
 
 
@@ -159,43 +195,33 @@ void VirionAgent::doStep(repast::SharedContext<VirusCellInteractionAgents>* cont
 **********************/
 void VirionAgent::move(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
 {
+    if(discreteGridSpace == nullptr)
+    {
+        std::cout<<"An incorrect pointer to the grid projection was passed to VirionAgent::move! The move cannot be executed."<<std::endl;
+        return;
+    }
+
+    // Get the current agent location from the grid projection.
     std::vector<int> currentLocation;
     discreteGridSpace->getLocation(agentId, currentLocation);
-    std::vector<int> newLocation;
 
     repast::IntUniformGenerator moveGenerator = repast::Random::instance()->createUniIntGenerator(-1, 1);
-    newLocation.push_back(currentLocation[0] + moveGenerator.next());
-    newLocation.push_back(currentLocation[1] + moveGenerator.next());
+    int moveX = 0;
+    int moveY = 0;
 
+    // Generate the agent's move stochasticly. The move is ensured to be to one of the 8 directly neighbouring cell. (Does not stay at the same spot)
+    while(moveX == 0 && moveY == 0)
+    {
+        moveX = moveGenerator.next();
+        moveY = moveGenerator.next();
+    }
+
+    // Create the new location coordinate.
+    std::vector<int> newLocation;
+    newLocation.push_back(currentLocation[0] + moveX);
+    newLocation.push_back(currentLocation[1] + moveY);
     repast::Point<int> movePoint(newLocation);
 
+    // Move the agent
     discreteGridSpace->moveTo(agentId, movePoint);
-}
-
-
-
-/**********************
-*   VirionAgent::attemptToInfectCell - Gets the epithelial cell at the current grid position, and attempts to infect it.
-**********************/
-void VirionAgent::attemptToInfectCell(EpithelialCellAgent* theEpithelialCell)
-{
-    if(theEpithelialCell != nullptr)
-    {
-        // If the cell seems to be helathy. (NOTE: It could be infected but is not expressing any proteins, so there is no sign of infection ).
-        if( theEpithelialCell->getExternalState() == theEpithelialCell->seeminglyHealthy )
-        {
-            repast::DoubleUniformGenerator penetrationChanceGen = repast::Random::instance()->createUniDoubleGenerator( 0.0 , 1.0 );
-            double toInfectTheCell = penetrationChanceGen.next();
-
-            if( toInfectTheCell > 1-penetrationProbability )
-            {
-                theEpithelialCell->infect();
-
-                // After infecting the cell we'll turn the virion agent to dead, since it is no longer a free virion particle. 
-                // This is to ensure that the data tracking the count of free virions is correct.
-                virionState = dead;
-            }
-
-        }
-    }
 }

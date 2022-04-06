@@ -1,58 +1,32 @@
 /* Epithelial_Cell_Agent.cpp */
+// Implements the Epithelial Cell Agents
+
+/**********************
+*   INCLUDE FILES
+**********************/
 #include "Epithelial_Cell_Agent.h"
 #include "Virus_Cell_Agent.h"
-
 #include "repast_hpc/Moore2DGridQuery.h"
 #include "repast_hpc/Point.h"
 
 
 /**********************
-*   EpithelialCellAgent::EpithelialCellAgent - Basic Constructor for the EpithelialCellAgent class.
-**********************/
-EpithelialCellAgent::EpithelialCellAgent(repast::AgentId theId) : 
-VirusCellInteractionAgents(theId),
-internalState(healthy),
-externalState(seeminglyHealthy),
-timeInfected(0),
-infectedLifespan(6),
-divisionRate(15),
-timeSinceLastDivision(0),
-modificationToNeighbCell(noModification),
-neighbouringCellToModify(-1, -1, -1, -1),
-idForNoNeighbourModification(-1, -1, -1, -1),
-releaseDelay(3),
-displayVirProteinsDelay(2),
-toReleaseVirion(false),
-extracellularReleaseProb(0.8),
-cellToCellTransmissionProb(0.2),
-virionReleaseRate(1.0),
-countOfVirionsToRelease(0),
-virionReleaseRemainder(0.0)
-{ 
-    agentLifespan = 30; 
-    agentAge = 0;
-}
-
-
-
-/**********************
 *   EpithelialCellAgent::EpithelialCellAgent - Constructor for the EpithelialCellAgent class.
 **********************/
-EpithelialCellAgent::EpithelialCellAgent(repast::AgentId theId, double theLifespan, int theAge, int theInfectedLifespan, int theDivisionRate, int theTimeSinceLastDivision,
+EpithelialCellAgent::EpithelialCellAgent(repast::AgentId theId, double theLifespan, int theAge, double theInfectedLifespan, double theDivisionRate, int theTimeSinceLastDivision,
                                          double theReleaseDelay, double theDisplayVirProtDelay, double theExtracellularReleaseProb, double theCellToCellTransmissionProb,
                                          double theVirionReleaseRate):
 VirusCellInteractionAgents(theId, theLifespan, theAge) ,
-internalState(healthy),
-externalState(seeminglyHealthy),
+internalState(Healthy),
+externalState(SeeminglyHealthy),
 timeInfected(0),
 infectedLifespan(theInfectedLifespan),
 divisionRate(theDivisionRate),
 timeSinceLastDivision(theTimeSinceLastDivision),
-modificationToNeighbCell(noModification),
+modificationToNeighbCell(NoModification),
 neighbouringCellToModify(-1, -1, -1, -1),
 idForNoNeighbourModification(-1, -1, -1, -1),
 releaseDelay(theReleaseDelay),
-toReleaseVirion(false),
 displayVirProteinsDelay(theDisplayVirProtDelay),
 extracellularReleaseProb(theExtracellularReleaseProb),
 cellToCellTransmissionProb(theCellToCellTransmissionProb),
@@ -68,7 +42,7 @@ virionReleaseRemainder(0.0)
 *   EpithelialCellAgent::EpithelialCellAgent - Constructor for the EpithelialCellAgent class.
 **********************/
 EpithelialCellAgent::EpithelialCellAgent(repast::AgentId theId, double theLifespan, int theAge, InternalState theInternalState, 
-                        ExternalState theExternalState, int theInfectedLifespan, int theInfectedTime, int theDivisionRate, int theTimeSinceLastDivision, double theReleaseDelay, double theDisplayVirProtDelay,
+                        ExternalState theExternalState, double theInfectedLifespan, int theInfectedTime, double theDivisionRate, int theTimeSinceLastDivision, double theReleaseDelay, double theDisplayVirProtDelay,
                         NeighbouringCellModificationType theModificationToNeighbCell, repast::AgentId theNeighbouringCellToModify,
                         double theExtracellularReleaseProb, double theCellToCellTransmissionProb,
                         double theVirionReleaseRate, int theCountOfVirionsToRelease, double theVirionReleaseRemainder):
@@ -83,7 +57,6 @@ modificationToNeighbCell(theModificationToNeighbCell),
 neighbouringCellToModify(theNeighbouringCellToModify),
 idForNoNeighbourModification(-1, -1, -1, -1),
 releaseDelay(theReleaseDelay),
-toReleaseVirion(false),
 displayVirProteinsDelay(theDisplayVirProtDelay),
 extracellularReleaseProb(theExtracellularReleaseProb),
 cellToCellTransmissionProb(theCellToCellTransmissionProb),
@@ -110,7 +83,7 @@ EpithelialCellAgent::~EpithelialCellAgent()
 *   EpithelialCellAgent::set - Setter for the agent. Sets all related variable values. This is needed in order to update the agents in the buffer zone.
 **********************/
 void EpithelialCellAgent::set(int currentRank, double newLifespan, double newAge, InternalState newInternalState, ExternalState newExtState, 
-                              int newInfectedLifespan ,int newInfectedTime, int newDivisionRate, int newTimeSinceLastDivision, double newReleaseDelay, 
+                              double newInfectedLifespan ,int newInfectedTime, double newDivisionRate, int newTimeSinceLastDivision, double newReleaseDelay, 
                               double newDisplayVirProteinsDelay, NeighbouringCellModificationType newModificationToNeighbCell, repast::AgentId newNeighbouringCellToModify, 
                               double newExtracellularReleaseProb, double newCellToCellTransmissionProb,
                               double newVirionReleaseRate, int newCountOfVirionsToRelease, double newVirionReleaseRemainder)
@@ -144,25 +117,24 @@ void EpithelialCellAgent::set(int currentRank, double newLifespan, double newAge
 void EpithelialCellAgent::doStep(repast::SharedContext<VirusCellInteractionAgents>* context, repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
 {
     // Reset the identifiers for releasing virions and modifying neighbouring cells to the default values. These will be set to specific values if needed.
-    toReleaseVirion = false;
     countOfVirionsToRelease = 0;
-    modificationToNeighbCell = noModification;
+    modificationToNeighbCell = NoModification;
     neighbouringCellToModify = idForNoNeighbourModification;
 
     // Increment the epithelial cell agent age.
     ++agentAge;
     // If the age exceeds the cell's lifespan, the cell dies. Change both internal and external cell states to dead.
-    if(agentAge > agentLifespan && internalState != dead)
+    if(agentAge > agentLifespan && internalState != Dead)
     {
-        internalState = dead;
-        externalState = deadCell;
+        internalState = Dead;
+        externalState = DeadCell;
     }
 
     // If the cell is not dead then it can act
-    if( internalState != dead )
+    if( internalState != Dead )
     {
-        // If the cell is infected
-        if( internalState == infected )
+        // If the cell is Infected
+        if( internalState == Infected )
         {
             actInfected(discreteGridSpace);
         }
@@ -185,8 +157,9 @@ void EpithelialCellAgent::actHealthy(repast::SharedDiscreteSpace<VirusCellIntera
     ++timeSinceLastDivision;
     // Check if the cell is ready to divide. If it is find which of its 8 neighbouring epithelial cells is dead.
     // If there is at least one, then the cell will divide into that position.
-    // The division of a cell is modelled as reviving a dead cell, however the new cell at that place
+    // The division of a cell is modelled as reviving a dead cell, however the new cell at that place will use the same EpithelialCellAgent object.
     // Will have different parameters to the previously dead cell, in order to actually represent a new epithelial cell.
+    // The reset of the cell will be executed by the Virus_Cell_Model class. Here we just need to identify the cell which is to be revived.
     if(timeSinceLastDivision > divisionRate)
     {
         std::vector<int> myLocation;
@@ -208,7 +181,7 @@ void EpithelialCellAgent::actHealthy(repast::SharedDiscreteSpace<VirusCellIntera
             if( (*surroundingAgentsIter)->getId().agentType() == 0 )
             {
                 EpithelialCellAgent* neighbouringEpithelialCell = static_cast<EpithelialCellAgent*>(*surroundingAgentsIter);
-                if( neighbouringEpithelialCell->getExternalState() == deadCell )
+                if( neighbouringEpithelialCell->getExternalState() == DeadCell )
                 {
                     neighbouringEpithelialCellsToConsider.push_back(*surroundingAgentsIter);
                 }  
@@ -223,22 +196,21 @@ void EpithelialCellAgent::actHealthy(repast::SharedDiscreteSpace<VirusCellIntera
             VirusCellInteractionAgents* theAgentToRevive = neighbouringEpithelialCellsToConsider[cellToDivideIntoIndex];
 
             // Store the id of the agent whic is to be "revived" (turned into a brand new cell)
-            // Set the modification to neighbouring cell to be "toDivideInto". That means that the cell wants to modify a neighbouring agent 
+            // Set the modification to neighbouring cell to be "ToDivideInto". That means that the cell wants to modify a neighbouring agent 
             //(that could be local or non-local agent). Then set what this modification should be. In this case we want to divide into that cell, 
             // which means revive the cell with new parameters. The model class will get the stored id and then use it in order to create the new cell into the existing dead cell object.
-            modificationToNeighbCell = toDivideInto;
+            modificationToNeighbCell = ToDivideInto;
             neighbouringCellToModify = theAgentToRevive->getId();
         }
-            timeSinceLastDivision = 0;
-        
 
+        timeSinceLastDivision = 0;
     } 
 }
 
 
 
 /**********************
-*   EpithelialCellAgent::actInfected - If the epithelial cell agent is infected, then act accordingly
+*   EpithelialCellAgent::actInfected - If the epithelial cell agent is infected, then act accordingly.
 **********************/
 void EpithelialCellAgent::actInfected(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
 {
@@ -248,74 +220,103 @@ void EpithelialCellAgent::actInfected(repast::SharedDiscreteSpace<VirusCellInter
     // Then return since a dead cell cannot perform any further actions.
     if( timeInfected > infectedLifespan )
     {
-        internalState = dead;
-        externalState = deadCell;
+        internalState = Dead;
+        externalState = DeadCell;
         return;
     }
 
-    if( timeInfected > displayVirProteinsDelay )
+    if( timeInfected > displayVirProteinsDelay &&  externalState != DisplayingViralProtein)
     {
-        externalState = displayingViralProtein;
+        externalState = DisplayingViralProtein;
     }
 
     // If the cell is ready to release new virus particles, then mark itself as ready to release.
     if( timeInfected > releaseDelay )
     {
-        externalState = displayingViralProtein;
+        externalState = DisplayingViralProtein;
 
-        repast::DoubleUniformGenerator releaseProbabilitiesGen = repast::Random::instance()->createUniDoubleGenerator(0.0, 1.0);
+        // Perform new virion release and/or cell to cell infection.
+        releaseProgenyVirus();
+        cellToCellInfection(discreteGridSpace);        
+    }
+}
 
-        // Attempt releasing a new virus particle in the extracellular space
-        if( releaseProbabilitiesGen.next() > 1 - extracellularReleaseProb )
-        {
-            toReleaseVirion = true;
-            countOfVirionsToRelease = (int)(virionReleaseRate + virionReleaseRemainder);
-            virionReleaseRemainder = (virionReleaseRate + virionReleaseRemainder) - (double)countOfVirionsToRelease;
-        }
 
-        // Attempt a cell to cell infection of a neighbouring cell
-        if( releaseProbabilitiesGen.next() > 1 - cellToCellTransmissionProb )
-        {
-            std::vector<int> myLocation;
-            discreteGridSpace->getLocation(agentId, myLocation);
-            repast::Point<int> locationPoint(myLocation);
-            
-            // Get the agents in the surrounding area
-            repast::Moore2DGridQuery<VirusCellInteractionAgents> theQuery(discreteGridSpace);
-            std::vector<VirusCellInteractionAgents*> surroundingAgents;
-            theQuery.query(locationPoint, 1, false, surroundingAgents);
 
-            std::vector<VirusCellInteractionAgents*>::iterator surroundingAgentsIter;
+/**********************
+*   EpithelialCellAgent::releaseProgenyVirus - Calculates the count of new virus particles which need to be released in the extracellular space.
+*   The Virus_Cell_Model class will then add the required number of agents to the simulation.
+*   Implements the ReleaseProgenyVirus submodel.
+**********************/
+void EpithelialCellAgent::releaseProgenyVirus()
+{
+    repast::DoubleUniformGenerator releaseProbabilitiesGen = repast::Random::instance()->createUniDoubleGenerator(0.0, 1.0);
 
-            // We only need to consider epithelial cell agents which appear to be healthy as we want to infect them
-            // Find those cells and store them in the vector.
-            std::vector<VirusCellInteractionAgents*> neighbouringEpithelialCellsToConsider;
-            for( surroundingAgentsIter = surroundingAgents.begin(); surroundingAgentsIter != surroundingAgents.end(); ++surroundingAgentsIter )
-            {
-                if( (*surroundingAgentsIter)->getId().agentType() == 0 )
-                {
-                    EpithelialCellAgent* neighbouringEpithelialCell = static_cast<EpithelialCellAgent*>(*surroundingAgentsIter);
-                    if( neighbouringEpithelialCell->getExternalState() == seeminglyHealthy )
-                    {
-                        neighbouringEpithelialCellsToConsider.push_back(*surroundingAgentsIter);
-                    }  
-                }
-            }
+    // Attempt releasing a new virus particle in the extracellular space. 
+    // The cell may/may not release new virus particles depending on the specifics of the Virus-Cell Interaction
+    if( releaseProbabilitiesGen.next() > 1 - extracellularReleaseProb )
+    {
+        countOfVirionsToRelease = (int)(virionReleaseRate + virionReleaseRemainder);
+        virionReleaseRemainder = (virionReleaseRate + virionReleaseRemainder) - (double)countOfVirionsToRelease;
+    }
+}
 
-            // Arbitrarily choose one of the possible cells to infect
-            if( neighbouringEpithelialCellsToConsider.size() > 0 )
-            {
-                repast::IntUniformGenerator neighbouringCellChoiceGen = repast::Random::instance()->createUniIntGenerator(0, neighbouringEpithelialCellsToConsider.size()-1);
-                int cellToInfectIndex = neighbouringCellChoiceGen.next();
-                VirusCellInteractionAgents* theAgentToInfect = neighbouringEpithelialCellsToConsider[cellToInfectIndex];
 
-                // Set the modification to neighbouring cell to be "toInfect". That means that the cell wants to modify a neighbouring agent 
-                //(that could be local or non-local agent). Then set what this modification should be. In this case we want to infect that cell, 
-                // The model class will get the stored id and then use it in order to infect the agent.
-                modificationToNeighbCell = toInfect;
-                neighbouringCellToModify = theAgentToInfect->getId();;
-            }
-        }
+
+/**********************
+*   EpithelialCellAgent::cellToCellInfection - Function for infecting a directly neighbouring cell which seems to be healthy.
+*   Implements the CellToCellInfection submodel.
+**********************/
+void EpithelialCellAgent::cellToCellInfection(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
+{
+    if(discreteGridSpace == nullptr)
+    {
+        std::cout<<"An incorrect pointer to the grid projection was passed to EpithelialCellAgent::cellToCellInfection! The cell to cell infection attempt cannot be executed."<<std::endl;
+        return;
+    }
+
+    repast::DoubleUniformGenerator releaseProbabilitiesGen = repast::Random::instance()->createUniDoubleGenerator(0.0, 1.0);
+    // Attempt a cell to cell infection of a neighbouring cell. Thaat will depend on a probability value.
+    if( releaseProbabilitiesGen.next() > 1 - cellToCellTransmissionProb )
+    {
+        std::vector<int> myLocation;
+        discreteGridSpace->getLocation(agentId, myLocation);
+        repast::Point<int> locationPoint(myLocation);
         
+        // Get the agents in the surrounding area
+        repast::Moore2DGridQuery<VirusCellInteractionAgents> theQuery(discreteGridSpace);
+        std::vector<VirusCellInteractionAgents*> surroundingAgents;
+        theQuery.query(locationPoint, 1, false, surroundingAgents);
+
+        std::vector<VirusCellInteractionAgents*>::iterator surroundingAgentsIter;
+
+        // We only need to consider epithelial cell agents which appear to be healthy as we want to infect them
+        // Find those cells and store them in the vector.
+        std::vector<VirusCellInteractionAgents*> neighbouringEpithelialCellsToConsider;
+        for( surroundingAgentsIter = surroundingAgents.begin(); surroundingAgentsIter != surroundingAgents.end(); ++surroundingAgentsIter )
+        {
+            if( (*surroundingAgentsIter)->getId().agentType() == 0 )
+            {
+                EpithelialCellAgent* neighbouringEpithelialCell = static_cast<EpithelialCellAgent*>(*surroundingAgentsIter);
+                if( neighbouringEpithelialCell->getExternalState() == SeeminglyHealthy )
+                {
+                    neighbouringEpithelialCellsToConsider.push_back(*surroundingAgentsIter);
+                }  
+            }
+        }
+
+        // Arbitrarily choose one of the possible cells to infect
+        if( neighbouringEpithelialCellsToConsider.size() > 0 )
+        {
+            repast::IntUniformGenerator neighbouringCellChoiceGen = repast::Random::instance()->createUniIntGenerator(0, neighbouringEpithelialCellsToConsider.size()-1);
+            int cellToInfectIndex = neighbouringCellChoiceGen.next();
+            VirusCellInteractionAgents* theAgentToInfect = neighbouringEpithelialCellsToConsider[cellToInfectIndex];
+
+            // Set the modification to neighbouring cell to be "ToInfect". That means that the cell wants to modify a neighbouring agent 
+            //(that could be local or non-local agent). Then set what this modification should be. In this case we want to infect that cell, 
+            // The model class will get the stored id and then use it in order to infect the agent.
+            modificationToNeighbCell = ToInfect;
+            neighbouringCellToModify = theAgentToInfect->getId();;
+        }
     }
 }

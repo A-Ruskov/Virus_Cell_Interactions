@@ -1,43 +1,52 @@
 #Properties file
+
+# Simulation Properties
 stop.at = 241
-grid.dimension = 800
-count.of.epithelial.cells = 2500
-count.of.virions = 50
-count.of.innate.immune.cells = 200
+grid.dimension = 400
+count.of.processes.X.axis = 8
+count.of.processes.Y.axis = 8
+
+# Initial agents counts per process
+count.of.virions = 20
+count.of.innate.immune.cells = 250
 count.of.specialised.immune.cells = 0
 
 # Epithelial cell parameters
 epithelial.cell.average.lifespan = 380
 epithelial.cell.lifespan.standard.dev = 220
-epithelial.cell.infected.lifespan.average = 24
-epithelial.cell.infected.lifespan.standard.dev = 1
-epithelial.cell.division.rate.average = 14
-epithelial.cell.division.rate.standard.dev = 7
-epithelial.cell.virion.release.delay.average = 4.0
-epithelial.cell.virion.release.delay.standard.dev = 1.0
-epithelial.cell.display.viral.peptides.delay.average = 2.0
+epithelial.cell.infected.lifespan.average = 24.0
+epithelial.cell.infected.lifespan.standard.dev = 1.0
+epithelial.cell.division.rate.average = 15.5
+epithelial.cell.division.rate.standard.dev = 8.5 
+epithelial.cell.virion.release.delay.average = 6.4
+epithelial.cell.virion.release.delay.standard.dev = 2.6
+epithelial.cell.display.viral.peptides.delay.average = 4.0
 epithelial.cell.display.viral.peptides.delay.standard.dev = 1.0
-release.virus.in.extracellular.space.probability = 1.0
-cell.to.cell.transmission.probability = 0.0
-epithelial.cell.infected.virion.release.rate.average = 1.5
-epithelial.cell.infected.virion.release.rate.standard.dev = 1.0
+release.virus.in.extracellular.space.probability = 0.6
+cell.to.cell.transmission.probability = 0.3
+epithelial.cell.infected.virion.release.rate.average = 4.17
+epithelial.cell.infected.virion.release.rate.standard.dev = 0.75
 
 # Virion Parameters
-virion.average.lifespan = 6.4
-virion.lifespan.standard.dev = 3.4
-virion.cell.penetration.probability = 0.5
-virion.clearance.probability = 0.15
+virion.average.lifespan = 5.6
+virion.lifespan.standard.dev = 1.3
+virion.cell.penetration.probability = 0.3
+virion.clearance.probability = 0.125
 virion.clearance.scaler = 1.1
 
 # Innate Immune Cell Parameters
-innate.immune.cell.average.lifespan = 48.0
+innate.immune.cell.average.lifespan = 49.7
 innate.immune.cell.lifespan.stdev = 3.0
 innate.immune.cell.infected.cell.recognition.probability = 0.5
 innate.immune.cell.infected.cell.elimination.probability = 0.1
-innate.immune.cell.recruit.specialised.immune.cell.probability = 0.05  
+innate.immune.cell.recruit.specialised.immune.cell.probability = 0.05
+innate.immune.cell.recruit.rate.of.innate.cell = 1.0
+specialised.immune.cell.recruit.rate.of.innate.cell = 1.0
+
 
 # Specialised Immune Cell Parameters
 specialised.immune.cell.average.lifespan = 168.0
 specialised.immune.cell.lifespan.stdev = 10.0
 specialised.immune.cell.infected.cell.recognition.probability = 0.8
 specialised.immune.cell.infected.cell.elimination.probability = 0.8
+specialised.immune.cell.recruit.rate.of.specialised.cell = 1.0

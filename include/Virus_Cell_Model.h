@@ -17,12 +17,18 @@
 #include "repast_hpc/SharedDiscreteSpace.h"
 #include "repast_hpc/GridComponents.h"
 
+// Include Data Collection File (Containing the datasources)
+#include "Data_Collection.h"
+
 // Include agent related files
 #include "Virus_Cell_Agent.h"
 #include "Epithelial_Cell_Agent.h"
 #include "Virion_Agent.h"
 #include "Innate_Immune_Cell.h"
 #include "Specialised_Immune_Cell.h"
+
+// Include the file which contains all agent package syncrhonisation implementation
+#include "Agent_Synchronisation_Package_Pattern.h"
 
 
 
@@ -40,7 +46,6 @@ class VirusCellModel{
     int countVirsWhichManagedToInfectACell = 0;
 	
     int stopAt;
-    int countOfEpithelialCellAgents;
     int countOfVirionAgents;
     int countOfInnateImmuneCellAgents;
     int countOfSpecialisedImmuneCellAgents;
@@ -65,7 +70,7 @@ class VirusCellModel{
     // Virion (Virus Particle) agents parameters.
     double virionAvgLifespan;
     double virionLifespanStdev;
-    double virionCellPenetrationProbability;
+    double virionPenetrationProbability;
     double virionClearanceProbability;
     double virionClearanceProbabilityScaler;
 
@@ -75,12 +80,15 @@ class VirusCellModel{
     double innateImmuneCellInfectedCellRecognitionProb;
     double innateImmuneCellInfectedCellEliminationProb;
     double innateImmuneCellRecruitSpecImmuneCellProb;
+    double innateImmuneCellRecruitRateOfInnateCell;
+    double specialisedImmuneCellRecruitRateOfInnateCell;
     
     // Specialised immune cell agents parameters.
     double specialisedImmuneCellAvgLifespan;
     double specialisedImmuneCellLifespanStdev;
     double specialisedImmuneCellInfectedCellRecognitionProb;
     double specialisedImmuneCellInfectedCellEliminationProb;
+    double specialisedImmuneCellRecruitRateOfSpecCell;
 
     // Trackers of the last used index for each of the agent types. Used in order to ensi
     int currVirionAgentId;
@@ -98,22 +106,21 @@ class VirusCellModel{
     // Data collection variables
     repast::SVDataSet* agentsData;
 
-    // Shared space
+    // The grid shared by the processes.
     repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace;
-
-    std::vector<EpithelialCellAgent*> epithelialCellsToRevive;
 public:
 	VirusCellModel(std::string propsFile, int argc, char** argv, boost::mpi::communicator* comm);
 	~VirusCellModel();
 	void init();
-    void requestAgents();
-	void doSomething();
 	void initSchedule(repast::ScheduleRunner& runner);
-	void recordResults();
 
 private:
+    void printEndOfTimestep();
+	void executeTimestep();
+    void recordResults();
+
     void initialiseEpithelialCellAgent( int epithelialCellIndex, int xCoor, int yCoor, bool isExistingAgentObject, EpithelialCellAgent* theExistingCellObject );
-    void initialiseVirionCellAgent(int virionIndex, bool isAReleasedVirus, int xCoor, int yCoor);
+    void initialiseVirionAgent(int virionIndex, bool isAReleasedVirus, int xCoor, int yCoor);
     void initialiseInnateImmuneCellAgent( int immuneCellId, bool isFreshCell );
     void initialiseSpecialisedImmuneCellAgent( int immuneCellId, bool isFreshCell );
 
@@ -126,121 +133,3 @@ private:
 };
 
 #endif // #ifndef VIRUS_CELL_MODEL
-
-
-
-
-
-/**********************
-*   Agent Package Provider class
-**********************/
-class VirusCellInteractionAgentsPackageProvider {
-	
-private:
-    repast::SharedContext<VirusCellInteractionAgents>* agentsContext;
-	
-public:
-	
-    VirusCellInteractionAgentsPackageProvider(repast::SharedContext<VirusCellInteractionAgents>* contextPtr);
-	
-    void providePackage(VirusCellInteractionAgents * agent, std::vector<VirusCellInteractionAgentPackage>& out);
-	
-    void provideContent(repast::AgentRequest req, std::vector<VirusCellInteractionAgentPackage>& out);
-	
-};
-
-
-
-
-
-/**********************
-* Agent Package Receiver class
-**********************/
-class VirusCellInteractionAgentsPackageReceiver {
-	
-private:
-    repast::SharedContext<VirusCellInteractionAgents>* agentsContext;
-	
-public:
-	
-    VirusCellInteractionAgentsPackageReceiver(repast::SharedContext<VirusCellInteractionAgents>* agentPtr);
-	
-    VirusCellInteractionAgents * createAgent(VirusCellInteractionAgentPackage package);
-	
-    void updateAgent(VirusCellInteractionAgentPackage package);
-	
-};
-
-
-
-/***********************************
-********** DATA COLLECTION *********
-***********************************/
-
-
-/**********************
-* Data Source class for tracking the count of alive epithelial cells in the model
-**********************/
-class DataSource_EpithelialCellsCount : public repast::TDataSource<int>{
-private:
-	repast::SharedContext<VirusCellInteractionAgents>* context;
-    
-public:
-	DataSource_EpithelialCellsCount(repast::SharedContext<VirusCellInteractionAgents>* theContext);
-	int getData();
-};
-
-
-/**********************
-* Data Source class for tracking the count of alive epithelial cells in the model
-**********************/
-class DataSource_VirionsCount : public repast::TDataSource<int>{
-private:
-	repast::SharedContext<VirusCellInteractionAgents>* context;
-    
-public:
-	DataSource_VirionsCount(repast::SharedContext<VirusCellInteractionAgents>* theContext);
-	int getData();
-};
-
-
-/**********************
-* Data Source class for tracking the count of innate immune cells in the model
-**********************/
-class DataSource_InnateImmuneCellsCount : public repast::TDataSource<int>{
-private:
-	repast::SharedContext<VirusCellInteractionAgents>* context;
-    
-public:
-	DataSource_InnateImmuneCellsCount(repast::SharedContext<VirusCellInteractionAgents>* theContext);
-	int getData();
-};
-
-
-
-/**********************
-* Data Source class for tracking the count of specialised immune cells in the model
-**********************/
-class DataSource_SpecialisedImmuneCellsCount : public repast::TDataSource<int>{
-private:
-	repast::SharedContext<VirusCellInteractionAgents>* context;
-    
-public:
-	DataSource_SpecialisedImmuneCellsCount(repast::SharedContext<VirusCellInteractionAgents>* theContext);
-	int getData();
-};
-
-
-
-/**********************
-* Data Source class for tracking the count of infected epithelial cells in the model
-**********************/
-class DataSource_InfectedEpithelialCellsCount : public repast::TDataSource<int>
-{
-private:
-	repast::SharedContext<VirusCellInteractionAgents>* context;
-    
-public:
-	DataSource_InfectedEpithelialCellsCount(repast::SharedContext<VirusCellInteractionAgents>* theContext);
-	int getData();
-};

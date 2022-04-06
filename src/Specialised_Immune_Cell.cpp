@@ -1,39 +1,29 @@
 /*  Specialised_Immune_Cell.cpp  */
+// Class for implementing the Specialised Immune Cell agents in the model.
+
+/**********************
+*   INCLUDE FILES
+**********************/
 #include "Specialised_Immune_Cell.h"
 #include "Virus_Cell_Agent.h"
 #include "Epithelial_Cell_Agent.h"
 
 #include "repast_hpc/initialize_random.h"
-
 #include "repast_hpc/Point.h"
 #include "repast_hpc/Moore2DGridQuery.h"
 
 
 /**********************
-*   SpecialisedImmuneCellAgent::SpecialisedImmuneCellAgent - Basic Constructor for the SpecialisedImmuneCellAgent class.
+*   SpecialisedImmuneCellAgent::SpecialisedImmuneCellAgent - Constructor for the SpecialisedImmuneCellAgent class. 
 **********************/
-SpecialisedImmuneCellAgent::SpecialisedImmuneCellAgent(repast::AgentId theId) : 
-VirusCellInteractionAgents(theId),
-specialisedImmuneCellState(healthy),
-toRecruitNewSpecImmuneCell(false)
-{ 
-    agentLifespan = 25; 
-    agentAge = 0;
-    infectedCellRecognitionProb = 0.7;
-    infectedCellEliminationProb = 0.8;
-}
-
-
-
-/**********************
-*   SpecialisedImmuneCellAgent::SpecialisedImmuneCellAgent - Constructor for the SpecialisedImmuneCellAgent class.
-**********************/
-SpecialisedImmuneCellAgent::SpecialisedImmuneCellAgent(repast::AgentId theId, double theLifespan, int theAge, double theInfectedCellRecognitionProb, double theInfectedCellEliminationProb):
+SpecialisedImmuneCellAgent::SpecialisedImmuneCellAgent(repast::AgentId theId, double theLifespan, int theAge, double theInfectedCellRecognitionProb, double theInfectedCellEliminationProb, double theSpecialisedImmuneCellRecruitRateOfSpecCell):
 VirusCellInteractionAgents(theId, theLifespan, theAge),
-specialisedImmuneCellState(healthy),
+specialisedImmuneCellState(Healthy),
 infectedCellRecognitionProb(theInfectedCellRecognitionProb),
 infectedCellEliminationProb(theInfectedCellEliminationProb),
-toRecruitNewSpecImmuneCell(false)
+specialisedImmuneCellRecruitRateOfSpecCell(theSpecialisedImmuneCellRecruitRateOfSpecCell),
+countOfSpecCellsToRecruit(0),
+specCellsRecruitRemainder(0.0)
 {
 }
 
@@ -41,12 +31,15 @@ toRecruitNewSpecImmuneCell(false)
 /**********************
 *   SpecialisedImmuneCellAgent::SpecialisedImmuneCellAgent - Constructor for the SpecialisedImmuneCellAgent class.
 **********************/
-SpecialisedImmuneCellAgent::SpecialisedImmuneCellAgent(repast::AgentId theId, double theLifespan, int theAge, SpecialisedImmuneCellStates theState, double theInfectedCellRecognitionProb, double theInfectedCellEliminationProb):
+SpecialisedImmuneCellAgent::SpecialisedImmuneCellAgent(repast::AgentId theId, double theLifespan, int theAge, SpecialisedImmuneCellStates theState, double theInfectedCellRecognitionProb, double theInfectedCellEliminationProb, 
+                                double theSpecialisedImmuneCellRecruitRateOfSpecCell, int theCountOfSpecCellsToRecruit, double theSpecCellsRecruitRemainder):
 VirusCellInteractionAgents(theId, theLifespan, theAge),
 specialisedImmuneCellState(theState),
 infectedCellRecognitionProb(theInfectedCellRecognitionProb),
 infectedCellEliminationProb(theInfectedCellEliminationProb),
-toRecruitNewSpecImmuneCell(false)
+specialisedImmuneCellRecruitRateOfSpecCell(theSpecialisedImmuneCellRecruitRateOfSpecCell),
+countOfSpecCellsToRecruit(theCountOfSpecCellsToRecruit),
+specCellsRecruitRemainder(theSpecCellsRecruitRemainder)
 {
 }
 
@@ -64,16 +57,21 @@ SpecialisedImmuneCellAgent::~SpecialisedImmuneCellAgent()
 
 
 /**********************
-*   SpecialisedImmuneCellAgent::set - Setter for the agent. Sets the current rank and updates the age, lifespan and cell state
+*   SpecialisedImmuneCellAgent::set - Setter for the agent. Sets all state variables and parameters of the agents. 
+*   This setter is used only for updating agent copies at the buffer zone. It ensures that the non-local agents copies are always up-to-date with the original.
 **********************/
-void SpecialisedImmuneCellAgent::set(int currentRank, double newLifespan, double newAge, SpecialisedImmuneCellStates newCellState, double newInfectedCellRecognitionProb, double newInfectedCellEliminationProb)
+void SpecialisedImmuneCellAgent::set(int currentRank, double newLifespan, double newAge, SpecialisedImmuneCellStates newSpecialisedImmuneCellState, double newInfectedCellRecognitionProb, 
+                                     double newInfectedCellEliminationProb, double newSpecialisedImmuneCellRecruitRateOfSpecCell, double newCountOfSpecCellsToRecruit, double newSpecCellsRecruitRemainder)
 {
     agentId.currentRank(currentRank);
     agentLifespan = newLifespan;
     agentAge = newAge;
-    specialisedImmuneCellState = newCellState;
+    specialisedImmuneCellState = newSpecialisedImmuneCellState;
     infectedCellRecognitionProb = newInfectedCellRecognitionProb;
     infectedCellEliminationProb = newInfectedCellEliminationProb;
+    specialisedImmuneCellRecruitRateOfSpecCell = newSpecialisedImmuneCellRecruitRateOfSpecCell;
+    countOfSpecCellsToRecruit = newCountOfSpecCellsToRecruit;
+    specCellsRecruitRemainder = newSpecCellsRecruitRemainder;
 }
 
 
@@ -84,18 +82,20 @@ void SpecialisedImmuneCellAgent::set(int currentRank, double newLifespan, double
 **********************/
 void SpecialisedImmuneCellAgent::doStep(repast::SharedContext<VirusCellInteractionAgents>* context, repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
 {
+    // Reset the count of specialised cells to recruit to the default 0.
+    countOfSpecCellsToRecruit = 0;
+
+    // Increment the agent's age and check if it has exceeded its lifespan. If that is the case, then set it to "Dead".
     ++agentAge;
-    if(agentAge > agentLifespan && specialisedImmuneCellState != dead)
+    if(agentAge > agentLifespan && specialisedImmuneCellState != Dead)
     {
-        specialisedImmuneCellState = dead;
+        specialisedImmuneCellState = Dead;
     }
 
-    if( specialisedImmuneCellState != dead )
+    // If the agent is healthy, then it executes its SpecialisedImmuneResponse submodel.
+    if( specialisedImmuneCellState == Healthy )
     {
-        attemptToDetectInfectedCell(discreteGridSpace);
-
-        // Move the specialised immune cell, then it could attepmt to detect another infected cell on the next time step.
-        move(discreteGridSpace);
+        specialisedImmuneResponse(discreteGridSpace);
     }
 }
 
@@ -103,44 +103,59 @@ void SpecialisedImmuneCellAgent::doStep(repast::SharedContext<VirusCellInteracti
 
 
 /**********************
-*   SpecialisedImmuneCellAgent::move - Function for moving an agent in the grid.
+*   SpecialisedImmuneCellAgent::move - Function for moving an agent to a neighbouring grid cell.
 **********************/
 void SpecialisedImmuneCellAgent::move(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
 {
+    if(discreteGridSpace == nullptr)
+    {
+        std::cout<<"An incorrect pointer to the grid projection was passed to InnateImmuneCellAgent::move! The move cannot be executed."<<std::endl;
+        return;
+    }
+
+    // Get the current agent location from the grid projection.
     std::vector<int> currentLocation;
     discreteGridSpace->getLocation(agentId, currentLocation);
-    std::vector<int> newLocation;
-
+   
     repast::IntUniformGenerator moveGenerator = repast::Random::instance()->createUniIntGenerator(-1, 1);
-    newLocation.push_back(currentLocation[0] + moveGenerator.next());
-    newLocation.push_back(currentLocation[1] + moveGenerator.next());
+    int moveX = 0;
+    int moveY = 0;
 
+    // Generate the agent's move stochasticly. The move is ensured to be to one of the 8 directly neighbouring cell.
+    while(moveX == 0 && moveY == 0)
+    {
+        moveX = moveGenerator.next();
+        moveY = moveGenerator.next();
+    }
+
+    // Create the new location coordinate.
+    std::vector<int> newLocation;
+    newLocation.push_back(currentLocation[0] + moveX);
+    newLocation.push_back(currentLocation[1] + moveY);
     repast::Point<int> movePoint(newLocation);
 
+    // Move the agent
     discreteGridSpace->moveTo(agentId, movePoint);
 }
 
 
 
 /**********************
-*   SpecialisedImmuneCellAgent::attemptToInfectCell - Gets the epithelial cell at the current grid position, attempts to find if it is infected and eliminate it.
+*   SpecialisedImmuneCellAgent::specialisedImmuneResponse - Gets the epithelial cell at the current grid position, attempts to find if it is infected and eliminate it.
+*   Executes the model's SpecialisedImmuneResponse submodel.
 **********************/
-void SpecialisedImmuneCellAgent::attemptToDetectInfectedCell(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
+void SpecialisedImmuneCellAgent::specialisedImmuneResponse(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace)
 {
-    toRecruitNewSpecImmuneCell = false;
-
     std::vector<int> immuneCellLoc;
     discreteGridSpace->getLocation(agentId, immuneCellLoc);
     repast::Point<int> locationPoint(immuneCellLoc);
     
-    // Get the at this grid cell
+    // Get the agents at this grid cell
     repast::Moore2DGridQuery<VirusCellInteractionAgents> theQuery(discreteGridSpace);
     std::vector<VirusCellInteractionAgents*> agentsAtThisCell;
     theQuery.query(locationPoint, 0, true, agentsAtThisCell);
 
     std::vector<VirusCellInteractionAgents*>::iterator agentsAtThisCellIter;
-
-
     for( agentsAtThisCellIter = agentsAtThisCell.begin(); agentsAtThisCellIter != agentsAtThisCell.end(); ++agentsAtThisCellIter )
     {
         // Find the epithelial cell which lives in this grid point
@@ -149,29 +164,43 @@ void SpecialisedImmuneCellAgent::attemptToDetectInfectedCell(repast::SharedDiscr
             EpithelialCellAgent* theEpithelialCell = static_cast<EpithelialCellAgent*>(*agentsAtThisCellIter);
 
             // If the cell seems to be helathy. (NOTE: It could be infected but is not expressing any proteins, so there is no sign of infection ).
-            if( theEpithelialCell->getExternalState() == theEpithelialCell->displayingViralProtein )
+            if( theEpithelialCell->getExternalState() == EpithelialCellAgent::ExternalState::DisplayingViralProtein )
             {
-                repast::DoubleUniformGenerator detectionProbGen = repast::Random::instance()->createUniDoubleGenerator( 0.0 , 1.0 );
-                double toDetectInfectedCell = detectionProbGen.next();
+                repast::DoubleUniformGenerator probabilityGenerator = repast::Random::instance()->createUniDoubleGenerator( 0.0 , 1.0 );
+                double toDetectInfectedCell = probabilityGenerator.next();
 
+                // Check if "the immune cell has actually managed to detect the viral proteins" (probability of detecting the infected cell)
                 if( toDetectInfectedCell > 1-infectedCellRecognitionProb )
                 {
-                    toRecruitNewSpecImmuneCell = true;
+                    // If the agent has detected the infection, execute its SpecialisedCellRecruitingImmuneCells submodel for recruiting new immune cells.
+                    specialisedCellRecruitingImmuneCells();
 
-                    repast::DoubleUniformGenerator infectedCellElimProbGen = repast::Random::instance()->createUniDoubleGenerator( 0.0 , 1.0 );
-                    double toEliminateCell = infectedCellElimProbGen.next();
-
+                    // Check if the immune cell manages to eliminate the virally-infected cell
+                    double toEliminateCell = probabilityGenerator.next();
                     if( toEliminateCell > 1-infectedCellEliminationProb )
                     {
+                        // Eliminate the infected cell.
                         theEpithelialCell->eliminate();
                     }
-
                 }
-
-                return;
+                break;
             }
-            
             break;
         }
     }
+
+    // Move the specialised immune cell, then it could attepmt to detect another infected cell on the next time step.
+    move(discreteGridSpace);
+}
+
+
+
+/**********************
+*   SpecialisedImmuneCellAgent::specialisedCellRecruitingImmuneCells - Function for "recruiting" new specialised immune cells.
+*   It calculates how many new cells need to be recruited. Then the Virus_Cell_Modell class will create the required count of new agents.
+**********************/
+void SpecialisedImmuneCellAgent::specialisedCellRecruitingImmuneCells()
+{
+    countOfSpecCellsToRecruit = int( specialisedImmuneCellRecruitRateOfSpecCell + specCellsRecruitRemainder );
+    specCellsRecruitRemainder = ( specialisedImmuneCellRecruitRateOfSpecCell + specCellsRecruitRemainder ) - countOfSpecCellsToRecruit;
 }

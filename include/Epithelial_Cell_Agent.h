@@ -11,24 +11,29 @@
 // Spatial Projection includes
 #include "repast_hpc/SharedDiscreteSpace.h"
 
+// Include the file containing the parent class
 #include "Virus_Cell_Agent.h"
 
 class EpithelialCellAgent: public VirusCellInteractionAgents
 {
 public:
-    enum ExternalState{ displayingViralProtein, seeminglyHealthy, deadCell };
-    enum InternalState{ dead, healthy, infected };
-    enum NeighbouringCellModificationType{ noModification, toDivideInto, toInfect };
+    // The enum with the set of external states of the cell. The states which can be sensed by other agetns
+    enum ExternalState{ DisplayingViralProtein, SeeminglyHealthy, DeadCell };
+
+    // The enum with the set of internal states of the cell.
+    enum InternalState{ Dead, Healthy, Infected };
+
+    // The enum holding all potential types of modification that an epithelial cell can do to a neighbouring cell.
+    enum NeighbouringCellModificationType{ NoModification, ToDivideInto, ToInfect };
 
 
 public:
-    // Constructors
-    EpithelialCellAgent(repast::AgentId theId);
-    EpithelialCellAgent(repast::AgentId theId, double theLifespan, int theAge, int theInfectedLifespan, int theDivisionRate, int theTimeSinceLastDivision, 
+    /* Constructors */
+    EpithelialCellAgent(repast::AgentId theId, double theLifespan, int theAge, double theInfectedLifespan, double theDivisionRate, int theTimeSinceLastDivision, 
                         double theReleaseDelay, double theDisplayVirProtDelay, double theExtracellularReleaseProb, double theCellToCellTransmissionProb, 
                         double theVirionReleaseRate);
     EpithelialCellAgent(repast::AgentId theId, double theLifespan, int theAge, InternalState theInternalState, 
-                        ExternalState theExternalState, int theInfectedLifespan, int theInfectedTime, int theDivisionRate, int theTimeSinceLastDivision, double theReleaseDelay,  double theDisplayVirProtDelay,
+                        ExternalState theExternalState, double theInfectedLifespan, int theInfectedTime, double theDivisionRate, int theTimeSinceLastDivision, double theReleaseDelay,  double theDisplayVirProtDelay,
                         NeighbouringCellModificationType theModificationToNeighbCell, repast::AgentId theNeighbouringCellToModify,  double theExtracellularReleaseProb, double theCellToCellTransmissionProb,
                         double theVirionReleaseRate, int theCountOfVirionsToRelease, double theVirionReleaseRemainder);
 
@@ -42,17 +47,17 @@ public:
     /* Getters specific to this these specific agents */
     int getInternalState(){                             return internalState;           }
     int getExternalState(){                             return externalState;           }
-    int getInfectedLifespan(){                          return infectedLifespan;        }
+
+    double getInfectedLifespan(){                          return infectedLifespan;        }
     int getTimeInfected(){                              return timeInfected;            }
+
     int getTimeSinceLastDivision(){                     return timeSinceLastDivision;   }
-    int getDivisionRate(){                              return divisionRate;            }
+    double getDivisionRate(){                              return divisionRate;            }
 
     int getTypeOfModifToNeighbCell(){                   return modificationToNeighbCell;}
     repast::AgentId getNeighbouringCellToModify(){      return neighbouringCellToModify;}
 
     double getReleaseDelay(){                           return releaseDelay;            }
-    bool isCellToReleaseVirion(){                       return toReleaseVirion;         }
-
     double getDisplayVirProteinsDelay(){                return displayVirProteinsDelay; }
 
     double getExtracellularReleaseProb(){               return extracellularReleaseProb;}
@@ -62,35 +67,62 @@ public:
     int getVirionCountToRelease(){                      return countOfVirionsToRelease; }
     double getVirionReleaseRemainder(){                 return virionReleaseRemainder; }
 
-    /* Setter */
-    void set(int currentRank, double newLifespan, double newAge, InternalState newInternalState, ExternalState newExtState, int newInfectedLifespan ,int newInfectedTime, int newDivisionRate, int newTimeSinceLastDivision, double newReleaseDelay, 
+    // Setter which sets all state variables and parameters of the agents. 
+    // This setter is used only for updating agent copies at the buffer zone. It ensures that the non-local agents copies are always up-to-date with the original.
+    void set(int currentRank, double newLifespan, double newAge, InternalState newInternalState, ExternalState newExtState,
+            double newInfectedLifespan ,int newInfectedTime, double newDivisionRate, int newTimeSinceLastDivision, double newReleaseDelay, 
             double newDisplayVirProteinsDelay, NeighbouringCellModificationType newModificationToNeighbCell, repast::AgentId newNeighbouringCellToModify,
             double newExtracellularReleaseProb, double newCellToCellTransmissionProb, 
             double newVirionReleaseRate, int newCountOfVirionsToRelease, double newVirionReleaseRemainder);
 
     void doStep(repast::SharedContext<VirusCellInteractionAgents>* context, repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace);
-    void actHealthy(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace);
-    void actInfected(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace);
-    void infect(){                  internalState=infected;     }
-    void eliminate(){               internalState=dead;     externalState = deadCell;}
+    
+    // Function which the virion agents can use to infect an epithelial cell agent.
+    void infect(){                  internalState = Infected;     }
+
+    // Function which the two immune cell agent types can use to eliminate the epithelial cell agent when it is infected.
+    void eliminate(){               internalState = Dead;     externalState = DeadCell;}
 
 private:
+    void actHealthy(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace);
+    void actInfected(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace);
+    void releaseProgenyVirus();
+    void cellToCellInfection(repast::SharedDiscreteSpace<VirusCellInteractionAgents, repast::WrapAroundBorders, repast::SimpleAdder<VirusCellInteractionAgents> >* discreteGridSpace);
+
+private:
+    // The internal state of the cell. It dictates the way the agent acts.
     InternalState internalState;
+
+    // The external state of the cell. It is what the other agent types can sense, in order to make their decisions on whether to do a particular action.
+    // This is what the state of the cell appears to be from the outside.
     ExternalState externalState;
 
-    int infectedLifespan;
+    // The amount of time the cell can live for when it is infected.
+    double infectedLifespan;
+
+    // The amount of time the cell has been infected for.
     int timeInfected;
   
+    // The time which has passed since the last division attempt of the cell.
     int timeSinceLastDivision;
-    int divisionRate;
+    
+    // The rate at which the cell divides - the required time between two division attempts of a cell.
+    double divisionRate;
 
+    // The type of modification that the cell wants to do to a neighbouring cell. (It could divide into it, infect it, or not modify it)
     NeighbouringCellModificationType modificationToNeighbCell;
+
+    // The id of the  neighbouring epithelial cell which this cell wants to modify.
     repast::AgentId neighbouringCellToModify;
+
+    // Holds a default agent id value, which will be the value of neighbouringCellToModify, when no modification is required.
     repast::AgentId idForNoNeighbourModification;
 
+    // The amount of time which needs to pass after the cell gets infected before it starts releasing new viruses/infecting neighbouring cells.
     double releaseDelay;
-    bool toReleaseVirion;
 
+    // The amount of time which needs to pass after the cell gets infected before it starts displaying virus proteins on its surface 
+    // (before it changes its externalState to DisplayingViralPeptide)
     double displayVirProteinsDelay;
 
     // Probability of releasing a new virus particle in the extracellular space, when the cell starts producing the progeny virus
@@ -109,5 +141,4 @@ private:
     // it will result in additional virus particles to be released)
     double virionReleaseRemainder;
 };
-
 #endif
