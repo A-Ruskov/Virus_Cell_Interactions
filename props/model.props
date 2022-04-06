@@ -3,7 +3,7 @@
 # Simulation Properties
 stop.at = 241
 grid.dimension = 400
-count.of.processes.X.axis = 4
+count.of.processes.X.axis = 5
 count.of.processes.Y.axis = 4
 
 # Initial agents counts per process
