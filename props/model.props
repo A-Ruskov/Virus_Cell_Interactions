@@ -4,7 +4,7 @@
 stop.at = 241
 grid.dimension = 400
 count.of.processes.X.axis = 8
-count.of.processes.Y.axis = 8
+count.of.processes.Y.axis = 4
 
 # Initial agents counts per process
 count.of.virions = 80
