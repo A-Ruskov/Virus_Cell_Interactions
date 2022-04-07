@@ -2,13 +2,13 @@
 
 # Simulation Properties
 stop.at = 241
-grid.dimension = 400
-count.of.processes.X.axis = 8
-count.of.processes.Y.axis = 8
+grid.dimension = 200
+count.of.processes.X.axis = 4
+count.of.processes.Y.axis = 4
 
 # Initial agents counts per process
-count.of.virions = 80
-count.of.innate.immune.cells = 1000
+count.of.virions = 20
+count.of.innate.immune.cells = 250
 count.of.specialised.immune.cells = 0
 
 # Epithelial cell parameters
